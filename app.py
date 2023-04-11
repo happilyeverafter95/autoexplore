@@ -3,18 +3,42 @@ import pandas as pd
 import streamlit as st
 from streamlit_chat import message
 
+from langchain import LLMChain
 from langchain.chains import ConversationChain
 from langchain.llms import OpenAI
-from langchain.agents import create_pandas_dataframe_agent
+from langchain.agents import create_pandas_dataframe_agent, ZeroShotAgent, Tool, AgentExecutor
+from langchain.memory import ConversationBufferMemory
 
 
-def load_chain(df) -> ConversationChain:
-    return create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
+PREFIX = """Have a conversation with a human, answering the following questions as best you can. You have access to the following tools:"""
+SUFFIX = """Begin!"
+
+{chat_history}
+Question: {input}
+{agent_scratchpad}"""
 
 
 st.set_page_config(page_title="LangPredict", page_icon=":robot:")
 st.header("LangExplore")
 st.write("Upload your dataset for GPT to explore")
+
+
+def load_chain(df) -> ConversationChain:
+    dataframe_agent = create_pandas_dataframe_agent(OpenAI(temperature=0), df, verbose=True)
+    tools = [
+        Tool(name="dataframe",
+             func=dataframe_agent.run,
+             description="dataframe manipulations")
+    ]
+    prompt = ZeroShotAgent.create_prompt(tools,
+                                         prefix=PREFIX,
+                                         suffix=SUFFIX,
+                                         input_variables=["input", "chat_history", "agent_scratchpad"])
+    memory = ConversationBufferMemory(memory_key="chat_history")
+    llm_chain = LLMChain(llm=OpenAI(temperature=0), prompt=prompt)
+    agent = ZeroShotAgent(llm_chain=llm_chain, tools=tools, verbose=True)
+    return AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=True, memory=memory)
+
 
 if "generated" not in st.session_state:
     st.session_state["generated"] = []
