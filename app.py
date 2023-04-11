@@ -18,8 +18,8 @@ Question: {input}
 {agent_scratchpad}"""
 
 
-st.set_page_config(page_title="LangPredict", page_icon=":robot:")
-st.header("LangExplore")
+st.set_page_config(page_title="Auto-Explore", page_icon=":robot:")
+st.header("Auto-Explore")
 st.write("Upload your dataset for GPT to explore")
 
 
